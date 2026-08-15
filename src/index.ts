@@ -1,5 +1,5 @@
 const TOOL_NAME = 'EDA Extension Doctor';
-const TOOL_VERSION = '0.3.1';
+const TOOL_VERSION = '0.3.2';
 const IFRAME_ID = 'eda-extension-doctor-main';
 
 /**
@@ -10,18 +10,12 @@ const IFRAME_ID = 'eda-extension-doctor-main';
  */
 async function openDoctorWindow(): Promise<void> {
 	try {
-		const opened = await eda.sys_IFrame.openIFrame(
-			'/iframe/index.html',
-			920,
-			680,
-			IFRAME_ID,
-			{
-				title: TOOL_NAME,
-				maximizeButton: true,
-				minimizeButton: false,
-				grayscaleMask: false,
-			},
-		);
+		const opened = await eda.sys_IFrame.openIFrame('/iframe/index.html', 920, 680, IFRAME_ID, {
+			title: TOOL_NAME,
+			maximizeButton: true,
+			minimizeButton: false,
+			grayscaleMask: false,
+		});
 		if (!opened) throw new Error('SYS_IFrame.openIFrame() 返回 false');
 	}
 	catch (error) {
@@ -34,14 +28,8 @@ async function openDoctorWindow(): Promise<void> {
 	}
 }
 
-export function activate(): void {
-	console.info(`[${TOOL_NAME}] ${TOOL_VERSION} activated`);
-}
-
-export function deactivate(): void {
-	console.info(`[${TOOL_NAME}] deactivated`);
-}
-
+export function activate(): void { console.info(`[${TOOL_NAME}] ${TOOL_VERSION} activated`); }
+export function deactivate(): void { console.info(`[${TOOL_NAME}] deactivated`); }
 export async function listInstalledExtensions(): Promise<void> { await openDoctorWindow(); }
 export async function inspectExtension(): Promise<void> { await openDoctorWindow(); }
 export async function removeExtension(): Promise<void> { await openDoctorWindow(); }
@@ -56,11 +44,11 @@ export function about(): void {
 			'- 扩展主线程只使用官方 SYS_IFrame API；',
 			'- iframe 运行脚本使用扩展包根路径 /iframe/doctor.js；',
 			'- 删除确认兼容层 /iframe/confirm-bridge.js 会绕过 EasyEDA iframe 中不可靠的原生 prompt 输入框；',
-			'- 用户点击确认后，原有 DELETE/CLEAN ORPHAN 精确 token 校验仍会通过，随后继续做目标身份复核；',
+			'- 删除成功后会明确提示“当前会话可能仍显示扩展，完全退出并重启后生效”；',
+			'- 不尝试修改 EDA 未公开的内存扩展注册表或强制热卸载；',
 			'- parent / top / iframe 按 origin 去重，避免同一 IndexedDB 被重复识别；',
 			'- 只有包含 Doctor 自身 UUID 的唯一数据库才允许任何写操作；',
 			'- 扫描孤儿残留会比对 extensionsIndex / extensionsObjectStorage / extensionsUserConfig；',
-			'- 只有“index 已不存在但对象文件或用户配置仍存在”的 UUID 才能进入残留清理；',
 			'- 清理写入前再次确认目标仍未出现在 extensionsIndex；',
 			'- Doctor 自身不可删除；',
 			'- standaloneScript 永不进入写事务；',
