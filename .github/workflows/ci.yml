@@ -1,0 +1,43 @@
+name: Verify EDA Extension Doctor
+
+on:
+  push:
+    branches:
+      - main
+      - agent/extension-doctor-m1
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Verify contracts, types and build
+        run: npm run verify
+
+      - name: Verify runtime-only EEXT contents
+        shell: bash
+        run: |
+          set -euo pipefail
+          package="build/dist/eda-extension-doctor_v0.1.0.eext"
+          test -f "$package"
+          unzip -Z1 "$package" | tee /tmp/eext-files.txt
+          grep -Fxq 'extension.json' /tmp/eext-files.txt
+          grep -Fxq 'dist/index.js' /tmp/eext-files.txt
+          for forbidden in '.github/' 'build/' 'config/' 'docs/' 'node_modules/' 'src/' 'tests/' 'package.json' 'tsconfig.json'; do
+            if grep -Fq "$forbidden" /tmp/eext-files.txt; then
+              echo "Forbidden EEXT content found: $forbidden" >&2
+              exit 1
+            fi
+          done
