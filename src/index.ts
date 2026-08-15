@@ -1,5 +1,5 @@
 const TOOL_NAME = 'EDA Extension Doctor';
-const TOOL_VERSION = '0.2.1';
+const TOOL_VERSION = '0.2.2';
 const IFRAME_ID = 'eda-extension-doctor-main';
 
 /**
@@ -67,8 +67,10 @@ export function about(): void {
 		[
 			`${TOOL_NAME} ${TOOL_VERSION}`,
 			'',
-			'当前版本采用 iframe 双层架构，并增加有界初始化诊断：',
+			'当前版本采用 iframe 双层架构，并增加资源加载与有界初始化诊断：',
 			'- 扩展主线程只使用官方 SYS_IFrame API；',
+			'- iframe 运行脚本使用扩展包根路径 /iframe/doctor.js；',
+			'- HTML 内联 bootstrap 会区分页面加载、外部脚本加载与执行错误；',
 			'- 浏览器存储访问只在 iframe 浏览器上下文执行；',
 			'- iframe 会探测 self / parent / top 可访问的 IndexedDB；',
 			'- databases() / IDB open() / request / transaction 全部有超时；',
