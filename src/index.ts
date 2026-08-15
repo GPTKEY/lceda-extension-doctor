@@ -1,5 +1,5 @@
 const TOOL_NAME = 'EDA Extension Doctor';
-const TOOL_VERSION = '0.3.2';
+const TOOL_VERSION = '0.3.3';
 const IFRAME_ID = 'eda-extension-doctor-main';
 
 /**
