@@ -66,9 +66,16 @@ test('初始化和全局未捕获异常必须进入状态区', () => {
 	assert.ok(iframe.includes("initialize().catch(error => reportFatal('初始化失败。', error))"));
 });
 
-test('静态页面必须能区分 doctor.js 未加载', () => {
-	assert.ok(iframeHtml.includes('等待 doctor.js 加载'));
-	assert.ok(iframeHtml.includes('说明 doctor.js 没有实际执行'));
+test('iframe 外部脚本必须使用扩展包根路径，禁止相对 ./doctor.js', () => {
+	assert.ok(iframeHtml.includes('src="/iframe/doctor.js"'));
+	assert.equal(iframeHtml.includes('src="./doctor.js"'), false);
+});
+
+test('静态页面必须能区分 HTML、bootstrap、资源加载和 doctor.js 执行阶段', () => {
+	assert.ok(iframeHtml.includes('HTML 页面已加载，等待启动脚本'));
+	assert.ok(iframeHtml.includes('HTML 启动脚本已执行'));
+	assert.ok(iframeHtml.includes('doctor.js 资源加载失败'));
+	assert.ok(iframeHtml.includes('doctor.js 资源已加载，但没有进入预期初始化阶段'));
 	assert.ok(iframe.includes('doctor.js 已加载'));
 });
 

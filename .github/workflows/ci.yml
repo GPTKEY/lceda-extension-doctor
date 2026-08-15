@@ -30,13 +30,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          package="build/dist/eda-extension-doctor_v0.2.1.eext"
+          package="build/dist/eda-extension-doctor_v0.2.2.eext"
           test -f "$package"
           unzip -Z1 "$package" | tee /tmp/eext-files.txt
           grep -Fxq 'extension.json' /tmp/eext-files.txt
           grep -Fxq 'dist/index.js' /tmp/eext-files.txt
           grep -Fxq 'iframe/index.html' /tmp/eext-files.txt
           grep -Fxq 'iframe/doctor.js' /tmp/eext-files.txt
+          unzip -p "$package" iframe/index.html | grep -Fq 'src="/iframe/doctor.js"'
+          if unzip -p "$package" iframe/index.html | grep -Fq 'src="./doctor.js"'; then
+            echo 'Relative iframe doctor.js path must not be packaged' >&2
+            exit 1
+          fi
           for forbidden in '.github/' 'build/' 'config/' 'docs/' 'node_modules/' 'src/' 'tests/' 'package.json' 'tsconfig.json'; do
             if grep -Fq "$forbidden" /tmp/eext-files.txt; then
               echo "Forbidden EEXT content found: $forbidden" >&2
