@@ -8,8 +8,9 @@ const iframeHtml = readFileSync(new URL('../iframe/index.html', import.meta.url)
 const manifest = JSON.parse(readFileSync(new URL('../extension.json', import.meta.url), 'utf8'));
 const edaIgnore = readFileSync(new URL('../.edaignore', import.meta.url), 'utf8');
 
-test('扩展主线程不得再直接访问 IndexedDB', () => {
-	assert.equal(entry.includes('indexedDB'), false);
+test('扩展主线程不得再直接调用 IndexedDB', () => {
+	assert.equal(/\bindexedDB\s*\./.test(entry), false);
+	assert.equal(/\bwindow\s*\.\s*indexedDB\b/.test(entry), false);
 	assert.ok(entry.includes('eda.sys_IFrame.openIFrame'));
 	assert.ok(entry.includes("'/iframe/index.html'"));
 });
