@@ -43,22 +43,54 @@ test('活动数据库必须通过 Doctor 自身 UUID 唯一绑定', () => {
 	assert.ok(iframe.includes('无法唯一绑定扩展数据库'));
 });
 
-test('删除事务不得包含 standaloneScript Store', () => {
+test('普通删除事务不得包含 standaloneScript Store', () => {
 	assert.ok(iframe.includes("[STORE_INDEX, STORE_OBJECTS, STORE_CONFIG], 'readwrite'"));
 	assert.equal(iframe.includes("[STORE_INDEX, STORE_OBJECTS, STORE_CONFIG, STORE_STANDALONE]"), false);
 	assert.ok(iframe.includes('standaloneScript：不会操作'));
 });
 
 test('Doctor 自身必须禁止删除并要求精确确认文本', () => {
-	assert.ok(iframe.includes('uuid === DOCTOR_UUID'));
+	assert.ok(iframe.includes('normalizeUuid(uuid) === DOCTOR_UUID'));
 	assert.ok(iframe.includes('SELF_REMOVAL_FORBIDDEN'));
 	assert.ok(iframe.includes('`DELETE ${uuid}`'));
 	assert.ok(iframe.includes('DELETE_CONFIRMATION_MISMATCH'));
+	assert.ok(iframe.includes('Doctor 自身不可卸载'));
 });
 
-test('删除后必须验证 index/config/object records 全部清零', () => {
+test('普通删除后必须验证 index/config/object records 全部清零', () => {
 	assert.ok(iframe.includes('DELETE_VERIFY_FAILED'));
-	assert.ok(iframe.includes('verify.index || verify.config || verify.objects.length'));
+	assert.ok(iframe.includes('verify.indexed || verify.configKeys.length || verify.objectKeys.length'));
+	assert.ok(iframe.includes('residualState(uuid)'));
+});
+
+test('孤儿扫描必须比对 index/object/config 三个扩展 Store', () => {
+	assert.ok(iframe.includes('async function scanOrphans()'));
+	assert.ok(iframe.includes('getAllRecords(db, STORE_INDEX)'));
+	assert.ok(iframe.includes('getAllKeys(db, STORE_OBJECTS)'));
+	assert.ok(iframe.includes('getAllKeys(db, STORE_CONFIG)'));
+	assert.ok(iframe.includes('if (indexed.has(item.uuid)) continue'));
+	assert.ok(iframeHtml.includes('id="orphans"'));
+	assert.ok(iframeHtml.includes('扫描孤儿残留'));
+});
+
+test('孤儿清理只能处理 index 缺失的残留，并在写入前再次校验', () => {
+	assert.ok(iframe.includes('async function cleanOrphan(uuid)'));
+	assert.ok(iframe.includes('ORPHAN_BECAME_INSTALLED'));
+	assert.ok(iframe.includes('if (before.indexed)'));
+	assert.ok(iframe.includes("[STORE_OBJECTS, STORE_CONFIG], 'readwrite'"));
+	assert.ok(iframe.includes('`CLEAN ORPHAN ${normalized}`'));
+	assert.ok(iframe.includes('ORPHAN_CLEAN_CONFIRMATION_MISMATCH'));
+	assert.ok(iframe.includes('ORPHAN_CLEAN_VERIFY_FAILED'));
+});
+
+test('孤儿清理不得写 standaloneScript，也不得删除 extensionsIndex', () => {
+	const cleanStart = iframe.indexOf('async function cleanOrphan(uuid)');
+	const cleanEnd = iframe.indexOf('\n\tasync function remove(uuid)', cleanStart);
+	assert.ok(cleanStart >= 0 && cleanEnd > cleanStart);
+	const cleanBody = iframe.slice(cleanStart, cleanEnd);
+	assert.equal(cleanBody.includes('STORE_STANDALONE'), false);
+	assert.equal(cleanBody.includes('objectStore(STORE_INDEX).delete'), false);
+	assert.ok(cleanBody.includes('[STORE_OBJECTS, STORE_CONFIG]'));
 });
 
 test('databases/open/request/transaction 必须全部具有超时边界', () => {
