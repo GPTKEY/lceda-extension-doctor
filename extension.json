@@ -3,7 +3,7 @@
 	"uuid": "4350c76638924d56a704e7c1906ba0c1",
 	"displayName": "EDA Extension Doctor",
 	"description": "嘉立创 EDA / EasyEDA Pro 扩展诊断、残留检查与精确卸载维护工具",
-	"version": "0.2.2",
+	"version": "0.2.3",
 	"publisher": "GPTKEY",
 	"engines": {
 		"eda": "~3.2.0"
