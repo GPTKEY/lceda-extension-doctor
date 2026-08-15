@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1">
+	<title>EDA Extension Doctor</title>
+	<style>
+		:root { color-scheme: light dark; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+		body { margin: 0; padding: 18px; background: Canvas; color: CanvasText; }
+		h1 { margin: 0 0 8px; font-size: 22px; }
+		p { margin: 6px 0; line-height: 1.55; }
+		.toolbar { display:flex; flex-wrap:wrap; gap:8px; margin:16px 0; }
+		button { padding:8px 12px; cursor:pointer; }
+		button.danger { font-weight:700; }
+		button:disabled { cursor:not-allowed; opacity:.5; }
+		.status { padding:10px 12px; border:1px solid GrayText; border-radius:8px; margin:12px 0; white-space:pre-wrap; }
+		table { width:100%; border-collapse:collapse; margin-top:12px; font-size:13px; }
+		th, td { border-bottom:1px solid GrayText; padding:8px 6px; text-align:left; vertical-align:top; }
+		code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size:12px; }
+		.small { opacity:.75; font-size:12px; }
+		.good { font-weight:700; }
+		.bad { font-weight:700; }
+		pre { white-space:pre-wrap; word-break:break-word; border:1px solid GrayText; border-radius:8px; padding:10px; max-height:220px; overflow:auto; }
+	</style>
+</head>
+<body>
+	<h1>EDA Extension Doctor <span class="small">v0.2.0</span></h1>
+	<p>用于诊断并精确清理嘉立创 EDA / EasyEDA Pro 的单个扩展持久化记录。</p>
+	<p class="small">本工具使用未公开的 IndexedDB 内部结构，因此任何 schema / 身份验证异常都会停止写操作。</p>
+
+	<div class="toolbar">
+		<button id="scan">扫描扩展</button>
+		<button id="diagnostics">存储诊断</button>
+		<button id="refresh">重新探测上下文</button>
+	</div>
+
+	<div id="status" class="status">正在初始化……</div>
+	<div id="content"></div>
+	<script src="./doctor.js"></script>
+</body>
+</html>
