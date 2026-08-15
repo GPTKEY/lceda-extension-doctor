@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const entry = readFileSync(new URL('../src/index.ts', import.meta.url), 'utf8');
 const iframe = readFileSync(new URL('../iframe/doctor.js', import.meta.url), 'utf8');
+const confirmBridge = readFileSync(new URL('../iframe/confirm-bridge.js', import.meta.url), 'utf8');
 const iframeHtml = readFileSync(new URL('../iframe/index.html', import.meta.url), 'utf8');
 const manifest = JSON.parse(readFileSync(new URL('../extension.json', import.meta.url), 'utf8'));
 const edaIgnore = readFileSync(new URL('../.edaignore', import.meta.url), 'utf8');
@@ -55,6 +56,18 @@ test('Doctor 自身必须禁止删除并要求精确确认文本', () => {
 	assert.ok(iframe.includes('`DELETE ${uuid}`'));
 	assert.ok(iframe.includes('DELETE_CONFIRMATION_MISMATCH'));
 	assert.ok(iframe.includes('Doctor 自身不可卸载'));
+});
+
+test('EasyEDA iframe 删除确认必须由兼容层接管原生 prompt', () => {
+	const bridgePos = iframeHtml.indexOf('src="/iframe/confirm-bridge.js"');
+	const doctorPos = iframeHtml.indexOf('src="/iframe/doctor.js"');
+	assert.ok(bridgePos >= 0 && doctorPos > bridgePos, 'confirm bridge must load before doctor.js');
+	assert.ok(confirmBridge.includes('Object.defineProperty(window, \'prompt\''));
+	assert.ok(confirmBridge.includes('window.confirm('));
+	assert.ok(confirmBridge.includes('DELETE_RE'));
+	assert.ok(confirmBridge.includes('ORPHAN_RE'));
+	assert.ok(confirmBridge.includes("throw new Error('DELETE_CONFIRMATION_CANCELLED')"));
+	assert.ok(confirmBridge.includes('return expected'));
 });
 
 test('普通删除后必须验证 index/config/object records 全部清零', () => {
@@ -115,6 +128,7 @@ test('初始化和全局未捕获异常必须进入状态区', () => {
 
 test('iframe 外部脚本必须使用扩展包根路径，禁止相对 ./doctor.js', () => {
 	assert.ok(iframeHtml.includes('src="/iframe/doctor.js"'));
+	assert.ok(iframeHtml.includes('src="/iframe/confirm-bridge.js"'));
 	assert.equal(iframeHtml.includes('src="./doctor.js"'), false);
 });
 
