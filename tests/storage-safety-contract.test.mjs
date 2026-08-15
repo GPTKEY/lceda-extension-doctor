@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const entry = readFileSync(new URL('../src/index.ts', import.meta.url), 'utf8');
 const iframe = readFileSync(new URL('../iframe/doctor.js', import.meta.url), 'utf8');
+const iframeHtml = readFileSync(new URL('../iframe/index.html', import.meta.url), 'utf8');
 const manifest = JSON.parse(readFileSync(new URL('../extension.json', import.meta.url), 'utf8'));
 const edaIgnore = readFileSync(new URL('../.edaignore', import.meta.url), 'utf8');
 
@@ -33,7 +34,7 @@ test('删除事务不得包含 standaloneScript Store', () => {
 });
 
 test('Doctor 自身必须禁止删除并要求精确确认文本', () => {
-	assert.ok(iframe.includes("uuid === DOCTOR_UUID"));
+	assert.ok(iframe.includes('uuid === DOCTOR_UUID'));
 	assert.ok(iframe.includes('SELF_REMOVAL_FORBIDDEN'));
 	assert.ok(iframe.includes('`DELETE ${uuid}`'));
 	assert.ok(iframe.includes('DELETE_CONFIRMATION_MISMATCH'));
@@ -42,6 +43,32 @@ test('Doctor 自身必须禁止删除并要求精确确认文本', () => {
 test('删除后必须验证 index/config/object records 全部清零', () => {
 	assert.ok(iframe.includes('DELETE_VERIFY_FAILED'));
 	assert.ok(iframe.includes('verify.index || verify.config || verify.objects.length'));
+});
+
+test('databases/open/request/transaction 必须全部具有超时边界', () => {
+	assert.ok(iframe.includes('databases: 4000'));
+	assert.ok(iframe.includes('open: 4000'));
+	assert.ok(iframe.includes('request: 4000'));
+	assert.ok(iframe.includes('transaction: 5000'));
+	assert.ok(iframe.includes('withTimeout('));
+	assert.ok(iframe.includes('makeTimeoutError('));
+});
+
+test('indexedDB.open 必须显式处理 blocked', () => {
+	assert.ok(iframe.includes('request.onblocked'));
+	assert.ok(iframe.includes('indexedDB.open() blocked'));
+});
+
+test('初始化和全局未捕获异常必须进入状态区', () => {
+	assert.ok(iframe.includes("window.addEventListener('error'"));
+	assert.ok(iframe.includes("window.addEventListener('unhandledrejection'"));
+	assert.ok(iframe.includes("initialize().catch(error => reportFatal('初始化失败。', error))"));
+});
+
+test('静态页面必须能区分 doctor.js 未加载', () => {
+	assert.ok(iframeHtml.includes('等待 doctor.js 加载'));
+	assert.ok(iframeHtml.includes('说明 doctor.js 没有实际执行'));
+	assert.ok(iframe.includes('doctor.js 已加载'));
 });
 
 test('EEXT 包必须排除开发仓库内容但保留 iframe', () => {
