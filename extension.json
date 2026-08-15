@@ -1,0 +1,27 @@
+{
+	"name": "eda-extension-doctor",
+	"uuid": "4350c76638924d56a704e7c1906ba0c1",
+	"displayName": "EDA Extension Doctor",
+	"description": "嘉立创 EDA / EasyEDA Pro 扩展诊断、残留检查与精确卸载维护工具",
+	"version": "0.3.3",
+	"publisher": "GPTKEY",
+	"engines": {"eda": "~3.2.0"},
+	"license": "Apache-2.0",
+	"repository": {"type": "extension-store", "url": "https://github.com/GPTKEY/lceda-extension-doctor"},
+	"categories": "Other",
+	"keywords": ["Extension", "Doctor", "Repair", "Maintenance"],
+	"images": {
+		"logo": "./images/logo.jpg"
+	},
+	"homepage": "https://github.com/GPTKEY/lceda-extension-doctor",
+	"bugs": "https://github.com/GPTKEY/lceda-extension-doctor/issues",
+	"activationEvents": {"onStartupFinished": true},
+	"entry": "./dist/index",
+	"dependentExtensions": {},
+	"headerMenus": {
+		"home": [{"id":"EDAExtensionDoctorHome","title":"Extension Doctor","menuItems":[{"id":"OpenDoctorHome","title":"打开 Extension Doctor...","registerFn":"listInstalledExtensions"},{"id":"AboutHome","title":"关于...","registerFn":"about"}]}],
+		"blank": [{"id":"EDAExtensionDoctorBlank","title":"Extension Doctor","menuItems":[{"id":"OpenDoctorBlank","title":"打开 Extension Doctor...","registerFn":"listInstalledExtensions"},{"id":"AboutBlank","title":"关于...","registerFn":"about"}]}],
+		"sch": [{"id":"EDAExtensionDoctorSch","title":"Extension Doctor","menuItems":[{"id":"OpenDoctorSch","title":"打开 Extension Doctor...","registerFn":"listInstalledExtensions"},{"id":"AboutSch","title":"关于...","registerFn":"about"}]}],
+		"pcb": [{"id":"EDAExtensionDoctorPcb","title":"Extension Doctor","menuItems":[{"id":"OpenDoctorPcb","title":"打开 Extension Doctor...","registerFn":"listInstalledExtensions"},{"id":"AboutPcb","title":"关于...","registerFn":"about"}]}]
+	}
+}

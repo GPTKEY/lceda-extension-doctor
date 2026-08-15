@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1">
+	<title>EDA Extension Doctor</title>
+	<style>
+		:root { color-scheme: light dark; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+		body { margin: 0; padding: 18px; background: Canvas; color: CanvasText; }
+		h1 { margin: 0 0 8px; font-size: 22px; }
+		p { margin: 6px 0; line-height: 1.55; }
+		.toolbar { display:flex; flex-wrap:wrap; gap:8px; margin:16px 0; }
+		button { padding:8px 12px; cursor:pointer; }
+		button.danger { font-weight:700; }
+		button:disabled { cursor:not-allowed; opacity:.5; }
+		.status { padding:10px 12px; border:1px solid GrayText; border-radius:8px; margin:12px 0; white-space:pre-wrap; }
+		table { width:100%; border-collapse:collapse; margin-top:12px; font-size:13px; }
+		th, td { border-bottom:1px solid GrayText; padding:8px 6px; text-align:left; vertical-align:top; }
+		code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size:12px; }
+		.small { opacity:.75; font-size:12px; }
+		.good { font-weight:700; }
+		.bad { font-weight:700; }
+		pre { white-space:pre-wrap; word-break:break-word; border:1px solid GrayText; border-radius:8px; padding:10px; max-height:220px; overflow:auto; }
+	</style>
+</head>
+<body>
+	<h1>EDA Extension Doctor <span class="small">v0.3.3</span></h1>
+	<p>用于诊断并精确清理嘉立创 EDA / EasyEDA Pro 的单个扩展持久化记录。</p>
+	<p class="small">本工具使用未公开的 IndexedDB 内部结构，因此任何 schema / 身份验证异常都会停止写操作。</p>
+	<p class="small"><b>注意：</b>删除验证通过后，EDA 当前会话仍可能保留扩展列表、菜单或运行实例的内存缓存；完全退出并重新启动后才会从编辑器界面消失。</p>
+
+	<div class="toolbar">
+		<button id="scan">扫描扩展</button>
+		<button id="orphans">扫描孤儿残留</button>
+		<button id="diagnostics">存储诊断</button>
+		<button id="refresh">重新探测上下文</button>
+	</div>
+
+	<div id="status" class="status">HTML 页面已加载，等待启动脚本……</div>
+	<div id="content"></div>
+
+	<script>
+		(function () {
+			var status = document.getElementById('status');
+			if (status) status.textContent = 'HTML 启动脚本已执行。\n正在加载确认兼容层与 /iframe/doctor.js ……';
+			window.addEventListener('error', function (event) {
+				var source = String(event && event.filename || '');
+				if (!source.includes('doctor.js') && !source.includes('confirm-bridge.js')) return;
+				if (status) {
+					status.textContent = 'Doctor 运行脚本执行发生错误。\n' + String(event.message || '未知脚本错误') + '\n来源：' + (source || '未知');
+					status.className = 'status bad';
+				}
+			});
+		})();
+	</script>
+
+	<script
+		src="/iframe/confirm-bridge.js"
+		onerror="var s=document.getElementById('status');if(s){s.textContent='确认兼容层加载失败。\n路径：/iframe/confirm-bridge.js\n为防止误删，删除功能不会继续。';s.className='status bad';}"
+	></script>
+	<script
+		src="/iframe/doctor.js"
+		onerror="var s=document.getElementById('status');if(s){s.textContent='doctor.js 资源加载失败。\n路径：/iframe/doctor.js\n请检查 EDA 扩展资源映射、安装缓存或开发者工具中的 Network/CSP/MIME 错误。';s.className='status bad';}"
+		onload="var s=document.getElementById('status');if(s&&s.textContent.indexOf('正在加载确认兼容层与 /iframe/doctor.js')>=0){s.textContent='doctor.js 资源已加载，但没有进入预期初始化阶段。\n请检查脚本执行错误或运行时兼容性。';s.className='status bad';}"
+	></script>
+</body>
+</html>
