@@ -30,14 +30,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          package="build/dist/eda-extension-doctor_v0.3.2.eext"
+          package="build/dist/eda-extension-doctor_v0.3.3.eext"
           test -f "$package"
           unzip -Z1 "$package" | tee /tmp/eext-files.txt
           grep -Fxq 'extension.json' /tmp/eext-files.txt
           grep -Fxq 'dist/index.js' /tmp/eext-files.txt
+          grep -Fxq 'images/logo.jpg' /tmp/eext-files.txt
           grep -Fxq 'iframe/index.html' /tmp/eext-files.txt
           grep -Fxq 'iframe/confirm-bridge.js' /tmp/eext-files.txt
           grep -Fxq 'iframe/doctor.js' /tmp/eext-files.txt
+          unzip -p "$package" extension.json | grep -Fq '"logo": "./images/logo.jpg"'
+          unzip -p "$package" images/logo.jpg > /tmp/doctor-logo.jpg
+          test "$(wc -c < /tmp/doctor-logo.jpg)" -gt 10000
+          file /tmp/doctor-logo.jpg | grep -Fq 'JPEG image data'
           unzip -p "$package" iframe/index.html | grep -Fq 'src="/iframe/confirm-bridge.js"'
           unzip -p "$package" iframe/index.html | grep -Fq 'src="/iframe/doctor.js"'
           bridge_line="$(unzip -p "$package" iframe/index.html | grep -n 'src="/iframe/confirm-bridge.js"' | head -n1 | cut -d: -f1)"
