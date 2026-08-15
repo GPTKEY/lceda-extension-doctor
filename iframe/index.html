@@ -24,7 +24,7 @@
 	</style>
 </head>
 <body>
-	<h1>EDA Extension Doctor <span class="small">v0.2.0</span></h1>
+	<h1>EDA Extension Doctor <span class="small">v0.2.1</span></h1>
 	<p>用于诊断并精确清理嘉立创 EDA / EasyEDA Pro 的单个扩展持久化记录。</p>
 	<p class="small">本工具使用未公开的 IndexedDB 内部结构，因此任何 schema / 身份验证异常都会停止写操作。</p>
 
@@ -34,7 +34,7 @@
 		<button id="refresh">重新探测上下文</button>
 	</div>
 
-	<div id="status" class="status">正在初始化……</div>
+	<div id="status" class="status">等待 doctor.js 加载……\n如果此文字长期不变，说明 doctor.js 没有实际执行。</div>
 	<div id="content"></div>
 	<script src="./doctor.js"></script>
 </body>
