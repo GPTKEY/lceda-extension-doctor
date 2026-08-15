@@ -2,7 +2,7 @@
 	"compilerOptions": {
 		"incremental": true,
 		"target": "ESNext",
-		"lib": ["ESNext", "DOM"],
+		"lib": ["ESNext", "DOM", "DOM.Iterable"],
 		"experimentalDecorators": true,
 		"module": "CommonJS",
 		"moduleResolution": "Node10",
@@ -16,6 +16,7 @@
 		"noImplicitAny": true,
 		"noImplicitThis": true,
 		"useUnknownInCatchVariables": true,
+		"skipLibCheck": true,
 		"outDir": "./dist/",
 		"sourceMap": false,
 		"allowSyntheticDefaultImports": true,
