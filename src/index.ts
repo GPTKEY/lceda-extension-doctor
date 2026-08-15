@@ -1,5 +1,5 @@
 const TOOL_NAME = 'EDA Extension Doctor';
-const TOOL_VERSION = '0.2.2';
+const TOOL_VERSION = '0.2.3';
 const IFRAME_ID = 'eda-extension-doctor-main';
 
 /**
@@ -22,9 +22,7 @@ async function openDoctorWindow(): Promise<void> {
 				grayscaleMask: false,
 			},
 		);
-		if (!opened) {
-			throw new Error('SYS_IFrame.openIFrame() 返回 false');
-		}
+		if (!opened) throw new Error('SYS_IFrame.openIFrame() 返回 false');
 	}
 	catch (error) {
 		console.error(`[${TOOL_NAME}] open iframe failed`, error);
@@ -36,7 +34,6 @@ async function openDoctorWindow(): Promise<void> {
 	}
 }
 
-/** 扩展激活时不扫描、不写入任何存储。 */
 export function activate(): void {
 	console.info(`[${TOOL_NAME}] ${TOOL_VERSION} activated`);
 }
@@ -45,38 +42,25 @@ export function deactivate(): void {
 	console.info(`[${TOOL_NAME}] deactivated`);
 }
 
-/** 以下菜单统一打开 Doctor 窗口，由 iframe 内 UI 完成对应操作。 */
-export async function listInstalledExtensions(): Promise<void> {
-	await openDoctorWindow();
-}
-
-export async function inspectExtension(): Promise<void> {
-	await openDoctorWindow();
-}
-
-export async function removeExtension(): Promise<void> {
-	await openDoctorWindow();
-}
-
-export async function showStorageDiagnostics(): Promise<void> {
-	await openDoctorWindow();
-}
+export async function listInstalledExtensions(): Promise<void> { await openDoctorWindow(); }
+export async function inspectExtension(): Promise<void> { await openDoctorWindow(); }
+export async function removeExtension(): Promise<void> { await openDoctorWindow(); }
+export async function showStorageDiagnostics(): Promise<void> { await openDoctorWindow(); }
 
 export function about(): void {
 	eda.sys_Dialog.showInformationMessage(
 		[
 			`${TOOL_NAME} ${TOOL_VERSION}`,
 			'',
-			'当前版本采用 iframe 双层架构，并增加资源加载与有界初始化诊断：',
+			'当前版本采用 iframe 双层架构，并增加同源 IndexedDB 上下文去重：',
 			'- 扩展主线程只使用官方 SYS_IFrame API；',
 			'- iframe 运行脚本使用扩展包根路径 /iframe/doctor.js；',
-			'- HTML 内联 bootstrap 会区分页面加载、外部脚本加载与执行错误；',
-			'- 浏览器存储访问只在 iframe 浏览器上下文执行；',
-			'- iframe 会探测 self / parent / top 可访问的 IndexedDB；',
+			'- iframe / parent / top 会先读取 origin；',
+			'- 同一 origin 的不同 Window 视为同一个 IndexedDB 命名空间，只探测一次；',
+			'- origin 不可读取时才回退到 IDBFactory 对象身份去重；',
+			'- parent 上下文优先，因为编辑器 Console 的真实存储验证来自页面上下文；',
 			'- databases() / IDB open() / request / transaction 全部有超时；',
-			'- IDB open() 显式处理 blocked；',
-			'- 顶层初始化异常和未处理 Promise 会直接显示在状态区；',
-			'- 只有找到包含 Doctor 自身 UUID 的唯一扩展数据库才允许删除；',
+			'- 只有包含 Doctor 自身 UUID 的唯一数据库才允许删除；',
 			'- Doctor 自身不可删除；',
 			'- standaloneScript 永不进入写事务；',
 			'- 删除后必须再次验证残留为 0。',

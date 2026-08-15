@@ -22,6 +22,21 @@ test('iframe 必须探测 iframe/parent/top 浏览器上下文', () => {
 	assert.ok(iframe.includes('context.indexedDB'));
 });
 
+test('同源 Window 必须按 origin 去重，不能只比较 IDBFactory 对象', () => {
+	assert.ok(iframe.includes('context.location && context.location.origin'));
+	assert.ok(iframe.includes('seenOrigins.has(origin)'));
+	assert.ok(iframe.includes('seenOrigins.set(origin'));
+	assert.ok(iframe.includes('duplicateReason'));
+	assert.ok(iframe.includes('与 ${seenOrigins.get(origin)} 同源'));
+});
+
+test('parent 上下文必须优先于 top/iframe', () => {
+	const parentIndex = iframe.indexOf("{ label: 'parent'");
+	const topIndex = iframe.indexOf("{ label: 'top'");
+	const iframeIndex = iframe.indexOf("{ label: 'iframe'");
+	assert.ok(parentIndex >= 0 && topIndex > parentIndex && iframeIndex > topIndex);
+});
+
 test('活动数据库必须通过 Doctor 自身 UUID 唯一绑定', () => {
 	assert.ok(iframe.includes('STORE_INDEX, DOCTOR_UUID'));
 	assert.ok(iframe.includes('matches.length !== 1'));
