@@ -30,7 +30,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          package="build/dist/eda-extension-doctor_v0.3.1.eext"
+          package="build/dist/eda-extension-doctor_v0.3.2.eext"
           test -f "$package"
           unzip -Z1 "$package" | tee /tmp/eext-files.txt
           grep -Fxq 'extension.json' /tmp/eext-files.txt
@@ -44,8 +44,10 @@ jobs:
           doctor_line="$(unzip -p "$package" iframe/index.html | grep -n 'src="/iframe/doctor.js"' | head -n1 | cut -d: -f1)"
           test "$bridge_line" -lt "$doctor_line"
           unzip -p "$package" iframe/confirm-bridge.js | grep -Fq "Object.defineProperty(window, 'prompt'"
+          unzip -p "$package" iframe/confirm-bridge.js | grep -Fq "Object.defineProperty(window, 'alert'"
           unzip -p "$package" iframe/confirm-bridge.js | grep -Fq 'window.confirm('
-          unzip -p "$package" iframe/confirm-bridge.js | grep -Fq 'return expected'
+          unzip -p "$package" iframe/confirm-bridge.js | grep -Fq '这不表示删除失败'
+          unzip -p "$package" iframe/index.html | grep -Fq '完全退出并重新启动后才会从编辑器界面消失'
           unzip -p "$package" iframe/index.html | grep -Fq '扫描孤儿残留'
           unzip -p "$package" iframe/doctor.js | grep -Fq 'seenOrigins.has(origin)'
           unzip -p "$package" iframe/doctor.js | grep -Fq "{ label: 'parent'"
