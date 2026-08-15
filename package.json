@@ -1,13 +1,11 @@
 {
 	"name": "lceda-extension-doctor",
-	"version": "0.3.1",
+	"version": "0.3.2",
 	"private": true,
 	"description": "嘉立创 EDA / EasyEDA Pro 扩展诊断与精确卸载维护工具",
 	"author": "GPTKEY",
 	"license": "Apache-2.0",
-	"engines": {
-		"node": ">=20.17.0"
-	},
+	"engines": {"node": ">=20.17.0"},
 	"scripts": {
 		"compile": "rimraf ./dist/ && ts-node ./config/esbuild.prod.ts",
 		"typecheck": "tsc --noEmit",
