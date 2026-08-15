@@ -24,7 +24,7 @@
 	</style>
 </head>
 <body>
-	<h1>EDA Extension Doctor <span class="small">v0.3.0</span></h1>
+	<h1>EDA Extension Doctor <span class="small">v0.3.1</span></h1>
 	<p>用于诊断并精确清理嘉立创 EDA / EasyEDA Pro 的单个扩展持久化记录。</p>
 	<p class="small">本工具使用未公开的 IndexedDB 内部结构，因此任何 schema / 身份验证异常都会停止写操作。</p>
 
@@ -41,21 +41,30 @@
 	<script>
 		(function () {
 			var status = document.getElementById('status');
-			if (status) status.textContent = 'HTML 启动脚本已执行。\n正在加载 /iframe/doctor.js ……';
+			if (status) status.textContent = 'HTML 启动脚本已执行。\n正在加载确认兼容层与 /iframe/doctor.js ……';
 			window.addEventListener('error', function (event) {
 				var source = String(event && event.filename || '');
-				if (!source.includes('doctor.js')) return;
+				if (!source.includes('doctor.js') && !source.includes('confirm-bridge.js')) return;
 				if (status) {
-					status.textContent = 'doctor.js 执行发生错误。\n' + String(event.message || '未知脚本错误') + '\n来源：' + (source || '未知');
+					status.textContent = 'Doctor 运行脚本执行发生错误。\n' + String(event.message || '未知脚本错误') + '\n来源：' + (source || '未知');
 					status.className = 'status bad';
 				}
 			});
 		})();
 	</script>
+
+	<!--
+		EasyEDA/JLCEDA iframe 中原生 prompt 输入框存在兼容性问题。
+		确认兼容层必须先于 doctor.js 加载，接管 Doctor 自己的 DELETE/CLEAN ORPHAN 确认消息。
+	-->
+	<script
+		src="/iframe/confirm-bridge.js"
+		onerror="var s=document.getElementById('status');if(s){s.textContent='确认兼容层加载失败。\n路径：/iframe/confirm-bridge.js\n为防止误删，删除功能不会继续。';s.className='status bad';}"
+	></script>
 	<script
 		src="/iframe/doctor.js"
 		onerror="var s=document.getElementById('status');if(s){s.textContent='doctor.js 资源加载失败。\n路径：/iframe/doctor.js\n请检查 EDA 扩展资源映射、安装缓存或开发者工具中的 Network/CSP/MIME 错误。';s.className='status bad';}"
-		onload="var s=document.getElementById('status');if(s&&s.textContent.indexOf('正在加载 /iframe/doctor.js')>=0){s.textContent='doctor.js 资源已加载，但没有进入预期初始化阶段。\n请检查脚本执行错误或运行时兼容性。';s.className='status bad';}"
+		onload="var s=document.getElementById('status');if(s&&s.textContent.indexOf('正在加载确认兼容层与 /iframe/doctor.js')>=0){s.textContent='doctor.js 资源已加载，但没有进入预期初始化阶段。\n请检查脚本执行错误或运行时兼容性。';s.className='status bad';}"
 	></script>
 </body>
 </html>
