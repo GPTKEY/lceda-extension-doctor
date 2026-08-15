@@ -1,5 +1,5 @@
 const TOOL_NAME = 'EDA Extension Doctor';
-const TOOL_VERSION = '0.3.0';
+const TOOL_VERSION = '0.3.1';
 const IFRAME_ID = 'eda-extension-doctor-main';
 
 /**
@@ -55,6 +55,8 @@ export function about(): void {
 			'当前版本支持正常扩展精确卸载与孤儿残留恢复：',
 			'- 扩展主线程只使用官方 SYS_IFrame API；',
 			'- iframe 运行脚本使用扩展包根路径 /iframe/doctor.js；',
+			'- 删除确认兼容层 /iframe/confirm-bridge.js 会绕过 EasyEDA iframe 中不可靠的原生 prompt 输入框；',
+			'- 用户点击确认后，原有 DELETE/CLEAN ORPHAN 精确 token 校验仍会通过，随后继续做目标身份复核；',
 			'- parent / top / iframe 按 origin 去重，避免同一 IndexedDB 被重复识别；',
 			'- 只有包含 Doctor 自身 UUID 的唯一数据库才允许任何写操作；',
 			'- 扫描孤儿残留会比对 extensionsIndex / extensionsObjectStorage / extensionsUserConfig；',
