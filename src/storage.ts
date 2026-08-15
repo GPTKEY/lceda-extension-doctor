@@ -6,15 +6,6 @@ const STORE_CONFIG = 'extensionsUserConfig';
 const STORE_STANDALONE_SCRIPT = 'standaloneScript';
 const REQUIRED_STORES = [STORE_INDEX, STORE_OBJECTS, STORE_CONFIG] as const;
 
-interface IDBDatabaseDescriptor {
-	name?: string;
-	version?: number;
-}
-
-interface IDBFactoryWithDatabases extends IDBFactory {
-	databases?: () => Promise<IDBDatabaseDescriptor[]>;
-}
-
 export interface ExtensionSummary {
 	database: string;
 	uuid: string;
@@ -173,12 +164,11 @@ async function parseManifestRecord(record: unknown): Promise<{ name: string | nu
  * destructive 操作要求数据库内存在 Doctor 自身 UUID，以此绑定当前活动扩展存储。
  */
 async function resolveActiveDatabase(): Promise<{ database: IDBDatabase; version: number | undefined }> {
-	const factory = indexedDB as IDBFactoryWithDatabases;
-	if (typeof factory.databases !== 'function') {
+	if (typeof indexedDB.databases !== 'function') {
 		throw new Error('STORAGE_DISCOVERY_UNAVAILABLE: 当前运行时不支持 indexedDB.databases()');
 	}
 
-	const descriptors = await factory.databases();
+	const descriptors = await indexedDB.databases();
 	const schemaCandidates: Array<{ name: string; version: number | undefined }> = [];
 
 	for (const descriptor of descriptors) {
@@ -186,7 +176,7 @@ async function resolveActiveDatabase(): Promise<{ database: IDBDatabase; version
 		let database: IDBDatabase | undefined;
 		try {
 			database = await openDatabase(descriptor.name);
-			const stores = [...database.objectStoreNames];
+			const stores = Array.from(database.objectStoreNames);
 			if (REQUIRED_STORES.every(storeName => stores.includes(storeName))) {
 				schemaCandidates.push({ name: descriptor.name, version: descriptor.version });
 			}
@@ -237,7 +227,7 @@ export async function getStorageDiagnostics(): Promise<StorageDiagnostics> {
 	try {
 		const extensions = await getAllRecords(active.database, STORE_INDEX);
 		const selfRecord = await getExactRecord(active.database, STORE_INDEX, DOCTOR_UUID);
-		const stores = [...active.database.objectStoreNames];
+		const stores = Array.from(active.database.objectStoreNames);
 		return {
 			database: active.database.name,
 			databaseVersion: active.version,
