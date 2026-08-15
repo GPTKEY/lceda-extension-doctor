@@ -30,7 +30,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          package="build/dist/eda-extension-doctor_v0.2.3.eext"
+          package="build/dist/eda-extension-doctor_v0.3.0.eext"
           test -f "$package"
           unzip -Z1 "$package" | tee /tmp/eext-files.txt
           grep -Fxq 'extension.json' /tmp/eext-files.txt
@@ -38,8 +38,13 @@ jobs:
           grep -Fxq 'iframe/index.html' /tmp/eext-files.txt
           grep -Fxq 'iframe/doctor.js' /tmp/eext-files.txt
           unzip -p "$package" iframe/index.html | grep -Fq 'src="/iframe/doctor.js"'
+          unzip -p "$package" iframe/index.html | grep -Fq '扫描孤儿残留'
           unzip -p "$package" iframe/doctor.js | grep -Fq 'seenOrigins.has(origin)'
           unzip -p "$package" iframe/doctor.js | grep -Fq "{ label: 'parent'"
+          unzip -p "$package" iframe/doctor.js | grep -Fq 'async function scanOrphans()'
+          unzip -p "$package" iframe/doctor.js | grep -Fq 'async function cleanOrphan(uuid)'
+          unzip -p "$package" iframe/doctor.js | grep -Fq 'ORPHAN_BECAME_INSTALLED'
+          unzip -p "$package" iframe/doctor.js | grep -Fq "[STORE_OBJECTS, STORE_CONFIG], 'readwrite'"
           if unzip -p "$package" iframe/index.html | grep -Fq 'src="./doctor.js"'; then
             echo 'Relative iframe doctor.js path must not be packaged' >&2
             exit 1

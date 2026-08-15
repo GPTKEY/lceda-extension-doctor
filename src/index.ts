@@ -1,12 +1,12 @@
 const TOOL_NAME = 'EDA Extension Doctor';
-const TOOL_VERSION = '0.2.3';
+const TOOL_VERSION = '0.3.0';
 const IFRAME_ID = 'eda-extension-doctor-main';
 
 /**
  * 扩展主线程受到嘉立创 EDA 的浏览器 API 沙箱限制，不能直接访问 IndexedDB。
  * 因此主线程只承担官方扩展 API 的窗口管理职责；真正的浏览器存储探测与维护
- * 固定放在扩展包内的 iframe 页面执行。iframe 页面仍会自行验证 Doctor UUID、
- * Store schema 与目标 UUID，验证失败时 fail-closed。
+ * 固定放在扩展包内的 iframe 页面执行。iframe 页面会自行验证 Doctor UUID、
+ * Store schema、origin 与目标 UUID，验证失败时 fail-closed。
  */
 async function openDoctorWindow(): Promise<void> {
 	try {
@@ -52,18 +52,18 @@ export function about(): void {
 		[
 			`${TOOL_NAME} ${TOOL_VERSION}`,
 			'',
-			'当前版本采用 iframe 双层架构，并增加同源 IndexedDB 上下文去重：',
+			'当前版本支持正常扩展精确卸载与孤儿残留恢复：',
 			'- 扩展主线程只使用官方 SYS_IFrame API；',
 			'- iframe 运行脚本使用扩展包根路径 /iframe/doctor.js；',
-			'- iframe / parent / top 会先读取 origin；',
-			'- 同一 origin 的不同 Window 视为同一个 IndexedDB 命名空间，只探测一次；',
-			'- origin 不可读取时才回退到 IDBFactory 对象身份去重；',
-			'- parent 上下文优先，因为编辑器 Console 的真实存储验证来自页面上下文；',
-			'- databases() / IDB open() / request / transaction 全部有超时；',
-			'- 只有包含 Doctor 自身 UUID 的唯一数据库才允许删除；',
+			'- parent / top / iframe 按 origin 去重，避免同一 IndexedDB 被重复识别；',
+			'- 只有包含 Doctor 自身 UUID 的唯一数据库才允许任何写操作；',
+			'- 扫描孤儿残留会比对 extensionsIndex / extensionsObjectStorage / extensionsUserConfig；',
+			'- 只有“index 已不存在但对象文件或用户配置仍存在”的 UUID 才能进入残留清理；',
+			'- 清理写入前再次确认目标仍未出现在 extensionsIndex；',
 			'- Doctor 自身不可删除；',
 			'- standaloneScript 永不进入写事务；',
-			'- 删除后必须再次验证残留为 0。',
+			'- databases() / IDB open() / request / transaction 全部有超时；',
+			'- 删除或清理后必须再次验证残留为 0。',
 		].join('\n'),
 		TOOL_NAME,
 		'关闭',
