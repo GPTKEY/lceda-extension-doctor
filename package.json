@@ -1,6 +1,6 @@
 {
 	"name": "lceda-extension-doctor",
-	"version": "0.3.0",
+	"version": "0.3.1",
 	"private": true,
 	"description": "嘉立创 EDA / EasyEDA Pro 扩展诊断与精确卸载维护工具",
 	"author": "GPTKEY",
@@ -12,7 +12,7 @@
 		"compile": "rimraf ./dist/ && ts-node ./config/esbuild.prod.ts",
 		"typecheck": "tsc --noEmit",
 		"test": "node --test tests/*.test.mjs",
-		"check:iframe": "node --check iframe/doctor.js",
+		"check:iframe": "node --check iframe/confirm-bridge.js && node --check iframe/doctor.js",
 		"build": "npm run compile && ts-node ./build/packaged.ts",
 		"verify": "npm run test && npm run check:iframe && npm run typecheck && npm run build"
 	},
