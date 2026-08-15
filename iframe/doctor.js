@@ -8,13 +8,29 @@
 	const STORE_STANDALONE = 'standaloneScript';
 	const REQUIRED_STORES = [STORE_INDEX, STORE_OBJECTS, STORE_CONFIG];
 
+	// 所有 IndexedDB 探测必须有明确上界，任何超时均视为不可安全访问并 fail-closed。
+	const TIMEOUT = Object.freeze({
+		databases: 4000,
+		open: 4000,
+		request: 4000,
+		transaction: 5000,
+	});
+
 	const statusEl = document.getElementById('status');
 	const contentEl = document.getElementById('content');
 	let active = null;
+	let phase = 'bootstrap';
 
 	function setStatus(text, ok = null) {
+		if (!statusEl) return;
 		statusEl.textContent = text;
 		statusEl.className = `status ${ok === true ? 'good' : ok === false ? 'bad' : ''}`;
+	}
+
+	function setPhase(nextPhase, detail = '') {
+		phase = nextPhase;
+		const suffix = detail ? `\n${detail}` : '';
+		setStatus(`运行阶段：${nextPhase}${suffix}`);
 	}
 
 	function esc(value) {
@@ -25,23 +41,68 @@
 			.replaceAll('"', '&quot;');
 	}
 
-	function requestToPromise(request) {
-		return new Promise((resolve, reject) => {
-			request.onsuccess = () => resolve(request.result);
-			request.onerror = () => reject(request.error || new Error('IndexedDB request failed'));
-		});
-	}
-
-	function transactionToPromise(tx) {
-		return new Promise((resolve, reject) => {
-			tx.oncomplete = () => resolve();
-			tx.onerror = () => reject(tx.error || new Error('IndexedDB transaction failed'));
-			tx.onabort = () => reject(tx.error || new Error('IndexedDB transaction aborted'));
-		});
-	}
-
 	function readableError(error) {
 		return error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+	}
+
+	function makeTimeoutError(label, timeoutMs) {
+		return new Error(`${label} 超时（>${timeoutMs} ms）`);
+	}
+
+	function withTimeout(promise, timeoutMs, label) {
+		let timer;
+		return Promise.race([
+			Promise.resolve(promise),
+			new Promise((_, reject) => {
+				timer = window.setTimeout(() => reject(makeTimeoutError(label, timeoutMs)), timeoutMs);
+			}),
+		]).finally(() => {
+			if (timer !== undefined) window.clearTimeout(timer);
+		});
+	}
+
+	function requestToPromise(request, label = 'IndexedDB request', timeoutMs = TIMEOUT.request) {
+		return new Promise((resolve, reject) => {
+			let settled = false;
+			const timer = window.setTimeout(() => {
+				if (settled) return;
+				settled = true;
+				reject(makeTimeoutError(label, timeoutMs));
+			}, timeoutMs);
+
+			const finish = callback => value => {
+				if (settled) return;
+				settled = true;
+				window.clearTimeout(timer);
+				callback(value);
+			};
+
+			request.onsuccess = finish(() => resolve(request.result));
+			request.onerror = finish(() => reject(request.error || new Error(`${label} failed`)));
+		});
+	}
+
+	function transactionToPromise(tx, label = 'IndexedDB transaction', timeoutMs = TIMEOUT.transaction) {
+		return new Promise((resolve, reject) => {
+			let settled = false;
+			const timer = window.setTimeout(() => {
+				if (settled) return;
+				settled = true;
+				try { tx.abort(); } catch {}
+				reject(makeTimeoutError(label, timeoutMs));
+			}, timeoutMs);
+
+			const finish = callback => () => {
+				if (settled) return;
+				settled = true;
+				window.clearTimeout(timer);
+				callback();
+			};
+
+			tx.oncomplete = finish(resolve);
+			tx.onerror = finish(() => reject(tx.error || new Error(`${label} failed`)));
+			tx.onabort = finish(() => reject(tx.error || new Error(`${label} aborted`)));
+		});
 	}
 
 	function contexts() {
@@ -56,7 +117,14 @@
 			try {
 				const context = candidate.get();
 				const factory = context && context.indexedDB;
-				if (!factory || seen.has(factory)) continue;
+				if (!factory) {
+					result.push({ label: candidate.label, error: 'indexedDB 不存在' });
+					continue;
+				}
+				if (seen.has(factory)) {
+					result.push({ label: candidate.label, duplicate: true });
+					continue;
+				}
 				seen.add(factory);
 				result.push({ label: candidate.label, factory });
 			}
@@ -67,33 +135,113 @@
 		return result;
 	}
 
-	async function openDb(factory, name) {
-		return requestToPromise(factory.open(name));
+	async function listDatabases(factory, label) {
+		if (!factory || typeof factory.databases !== 'function') {
+			throw new Error(`${label}: indexedDB.databases() 不可用`);
+		}
+		return withTimeout(
+			factory.databases(),
+			TIMEOUT.databases,
+			`${label}: indexedDB.databases()`,
+		);
+	}
+
+	function openDb(factory, name, label = name) {
+		return new Promise((resolve, reject) => {
+			let settled = false;
+			let request;
+			const timer = window.setTimeout(() => {
+				if (settled) return;
+				settled = true;
+				reject(makeTimeoutError(`${label}: indexedDB.open(${name})`, TIMEOUT.open));
+			}, TIMEOUT.open);
+
+			const fail = error => {
+				if (settled) return;
+				settled = true;
+				window.clearTimeout(timer);
+				reject(error);
+			};
+
+			try {
+				request = factory.open(name);
+			}
+			catch (error) {
+				fail(error);
+				return;
+			}
+
+			request.onsuccess = () => {
+				if (settled) {
+					try { request.result.close(); } catch {}
+					return;
+				}
+				settled = true;
+				window.clearTimeout(timer);
+				resolve(request.result);
+			};
+			request.onerror = () => fail(request.error || new Error(`${label}: indexedDB.open() failed`));
+			request.onblocked = () => fail(new Error(`${label}: indexedDB.open() blocked`));
+		});
 	}
 
 	async function getRecord(db, storeName, key) {
 		const tx = db.transaction(storeName, 'readonly');
-		const result = await requestToPromise(tx.objectStore(storeName).get(key));
-		await transactionToPromise(tx);
+		const done = transactionToPromise(tx, `读取 ${storeName}`);
+		const result = await requestToPromise(
+			tx.objectStore(storeName).get(key),
+			`读取 ${storeName}[${String(key)}]`,
+		);
+		await done;
 		return result;
+	}
+
+	async function getAllRecords(db, storeName) {
+		const tx = db.transaction(storeName, 'readonly');
+		const done = transactionToPromise(tx, `枚举 ${storeName}`);
+		const records = await requestToPromise(
+			tx.objectStore(storeName).getAll(),
+			`枚举 ${storeName}`,
+		);
+		await done;
+		return records;
 	}
 
 	async function collectObjectKeys(db, uuid) {
 		const tx = db.transaction(STORE_OBJECTS, 'readonly');
+		const done = transactionToPromise(tx, `枚举 ${STORE_OBJECTS}`);
 		const store = tx.objectStore(STORE_OBJECTS);
 		const keys = [];
 		await new Promise((resolve, reject) => {
+			let settled = false;
+			const timer = window.setTimeout(() => {
+				if (settled) return;
+				settled = true;
+				try { tx.abort(); } catch {}
+				reject(makeTimeoutError(`枚举 ${STORE_OBJECTS} cursor`, TIMEOUT.request));
+			}, TIMEOUT.request);
 			const req = store.openKeyCursor();
 			req.onsuccess = event => {
+				if (settled) return;
 				const cursor = event.target.result;
-				if (!cursor) return resolve();
+				if (!cursor) {
+					settled = true;
+					window.clearTimeout(timer);
+					resolve();
+					return;
+				}
 				const key = String(cursor.key);
 				if (key === uuid || key.startsWith(`${uuid}|`)) keys.push(cursor.key);
 				cursor.continue();
 			};
-			req.onerror = () => reject(req.error);
+			req.onerror = () => {
+				if (settled) return;
+				settled = true;
+				window.clearTimeout(timer);
+				reject(req.error || new Error(`枚举 ${STORE_OBJECTS} cursor failed`));
+			};
 		});
-		await transactionToPromise(tx);
+		await done;
 		return keys;
 	}
 
@@ -112,25 +260,59 @@
 		};
 	}
 
+	async function inspectDatabaseCandidate(probe, descriptor, diagnostics) {
+		if (!descriptor.name) return null;
+		let db;
+		try {
+			db = await openDb(probe.factory, descriptor.name, `${probe.label}/${descriptor.name}`);
+			const stores = Array.from(db.objectStoreNames);
+			if (!REQUIRED_STORES.every(name => stores.includes(name))) return null;
+			const self = await getRecord(db, STORE_INDEX, DOCTOR_UUID);
+			if (!self) return null;
+			return {
+				label: probe.label,
+				factory: probe.factory,
+				name: descriptor.name,
+				version: descriptor.version,
+				stores,
+			};
+		}
+		catch (error) {
+			diagnostics.push(`${probe.label}/${descriptor.name}: ${readableError(error)}`);
+			return null;
+		}
+		finally {
+			try { db && db.close(); } catch {}
+		}
+	}
+
 	async function discover() {
 		active = null;
-		contentEl.innerHTML = '';
+		if (contentEl) contentEl.innerHTML = '';
+		setPhase('discover:start', '正在枚举 iframe / parent / top 存储上下文……');
 		const probes = contexts();
 		const diagnostics = [];
 		const matches = [];
 
+		if (probes.length === 0) {
+			setStatus('没有可探测的浏览器上下文，已停止所有写操作。', false);
+			return null;
+		}
+
 		for (const probe of probes) {
+			if (probe.duplicate) {
+				diagnostics.push(`${probe.label}: 与前一个 IndexedDBFactory 相同，跳过重复探测`);
+				continue;
+			}
 			if (probe.error) {
 				diagnostics.push(`${probe.label}: ${probe.error}`);
 				continue;
 			}
-			if (typeof probe.factory.databases !== 'function') {
-				diagnostics.push(`${probe.label}: indexedDB 存在，但 databases() 不可用`);
-				continue;
-			}
+
+			setPhase(`discover:${probe.label}:databases`, `正在调用 ${probe.label}.indexedDB.databases()，超时 ${TIMEOUT.databases} ms`);
 			let descriptors;
 			try {
-				descriptors = await probe.factory.databases();
+				descriptors = await listDatabases(probe.factory, probe.label);
 				diagnostics.push(`${probe.label}: 可见数据库 ${descriptors.length} 个`);
 			}
 			catch (error) {
@@ -138,36 +320,22 @@
 				continue;
 			}
 
-			for (const descriptor of descriptors) {
-				if (!descriptor.name) continue;
-				let db;
-				try {
-					db = await openDb(probe.factory, descriptor.name);
-					const stores = Array.from(db.objectStoreNames);
-					if (!REQUIRED_STORES.every(name => stores.includes(name))) continue;
-					const self = await getRecord(db, STORE_INDEX, DOCTOR_UUID);
-					if (self) {
-						matches.push({
-							label: probe.label,
-							factory: probe.factory,
-							name: descriptor.name,
-							version: descriptor.version,
-							stores,
-						});
-					}
-				}
-				catch (error) {
-					diagnostics.push(`${probe.label}/${descriptor.name}: ${readableError(error)}`);
-				}
-				finally {
-					try { db && db.close(); } catch {}
-				}
+			const candidates = descriptors.filter(descriptor => descriptor && descriptor.name).slice(0, 64);
+			setPhase(
+				`discover:${probe.label}:open`,
+				`正在检查 ${candidates.length} 个数据库候选；每个 open 最长 ${TIMEOUT.open} ms`,
+			);
+			const inspected = await Promise.all(
+				candidates.map(descriptor => inspectDatabaseCandidate(probe, descriptor, diagnostics)),
+			);
+			for (const match of inspected) {
+				if (match) matches.push(match);
 			}
 		}
 
 		if (matches.length !== 1) {
 			setStatus(
-				`无法唯一绑定扩展数据库，已停止所有写操作。\n匹配数量：${matches.length}\n\n${diagnostics.join('\n') || '没有可访问的 IndexedDB 上下文。'}`,
+				`无法唯一绑定扩展数据库，已停止所有写操作。\n运行阶段：${phase}\n匹配数量：${matches.length}\n\n${diagnostics.join('\n') || '没有可访问的 IndexedDB 上下文。'}`,
 				false,
 			);
 			return null;
@@ -184,16 +352,14 @@
 	async function withDb(callback) {
 		if (!active) await discover();
 		if (!active) throw new Error('STORAGE_NOT_BOUND');
-		const db = await openDb(active.factory, active.name);
+		const db = await openDb(active.factory, active.name, `${active.label}/${active.name}`);
 		try { return await callback(db); }
 		finally { db.close(); }
 	}
 
 	async function listExtensions() {
 		return withDb(async db => {
-			const tx = db.transaction(STORE_INDEX, 'readonly');
-			const records = await requestToPromise(tx.objectStore(STORE_INDEX).getAll());
-			await transactionToPromise(tx);
+			const records = await getAllRecords(db, STORE_INDEX);
 			return records.map(raw => summary(raw, db.name)).filter(item => item.uuid);
 		});
 	}
@@ -210,7 +376,9 @@
 			let manifest = null;
 			try {
 				const source = manifestRecord && manifestRecord.source;
-				if (source && typeof source.text === 'function') manifest = JSON.parse(await source.text());
+				if (source && typeof source.text === 'function') {
+					manifest = JSON.parse(await withTimeout(source.text(), TIMEOUT.request, '读取 extension.json Blob'));
+				}
 			}
 			catch {}
 			return {
@@ -241,7 +409,7 @@
 			}
 			const keys = await collectObjectKeys(db, uuid);
 			const tx = db.transaction([STORE_INDEX, STORE_OBJECTS, STORE_CONFIG], 'readwrite');
-			const done = transactionToPromise(tx);
+			const done = transactionToPromise(tx, `删除扩展 ${uuid}`, TIMEOUT.transaction);
 			tx.objectStore(STORE_INDEX).delete(uuid);
 			tx.objectStore(STORE_CONFIG).delete(uuid);
 			const objectStore = tx.objectStore(STORE_OBJECTS);
@@ -279,8 +447,12 @@
 
 	async function renderList() {
 		try {
+			setPhase('list:extensions', '正在读取 extensionsIndex……');
 			const items = await listExtensions();
 			contentEl.innerHTML = `<table><thead><tr><th>扩展</th><th>版本</th><th>UUID</th><th>状态</th><th>操作</th></tr></thead><tbody>${renderRows(items)}</tbody></table>`;
+			if (active) {
+				setStatus(`存储已绑定。\n上下文：${active.label}\n数据库：${active.name}\n已读取扩展：${items.length} 个`, true);
+			}
 			contentEl.querySelectorAll('button[data-action]').forEach(button => {
 				button.addEventListener('click', async () => {
 					const uuid = button.dataset.uuid;
@@ -305,7 +477,7 @@
 			});
 		}
 		catch (error) {
-			setStatus(`读取扩展列表失败：${readableError(error)}`, false);
+			setStatus(`读取扩展列表失败。\n运行阶段：${phase}\n${readableError(error)}\n\n没有执行任何写操作。`, false);
 		}
 	}
 
@@ -322,22 +494,56 @@
 				extensionCount: items.length,
 				selfUuid: DOCTOR_UUID,
 				standaloneScriptPresent: active.stores.includes(STORE_STANDALONE),
+				timeoutsMs: TIMEOUT,
 			}, null, 2))}</pre>`;
 		}
 		catch (error) {
-			setStatus(`诊断失败：${readableError(error)}`, false);
+			setStatus(`诊断失败。\n运行阶段：${phase}\n${readableError(error)}`, false);
 		}
 	}
 
-	document.getElementById('scan').addEventListener('click', renderList);
-	document.getElementById('diagnostics').addEventListener('click', diagnostics);
-	document.getElementById('refresh').addEventListener('click', async () => {
-		await discover();
-		if (active) await renderList();
+	function reportFatal(prefix, error) {
+		const detail = readableError(error);
+		console.error(`[EDA Extension Doctor] ${prefix}`, error);
+		setStatus(`${prefix}\n运行阶段：${phase}\n${detail}\n\n为防止误删，当前会话不会继续执行写操作。`, false);
+	}
+
+	// 这一行必须在任何 IndexedDB 探测之前执行，用于区分“doctor.js 未加载”和“探测卡住”。
+	setStatus('doctor.js 已加载。\n正在安装运行时异常保护……');
+
+	window.addEventListener('error', event => {
+		reportFatal('页面脚本发生未捕获异常。', event.error || event.message);
+	});
+	window.addEventListener('unhandledrejection', event => {
+		reportFatal('页面 Promise 发生未捕获拒绝。', event.reason);
 	});
 
-	(async () => {
+	const scanButton = document.getElementById('scan');
+	const diagnosticsButton = document.getElementById('diagnostics');
+	const refreshButton = document.getElementById('refresh');
+	if (!scanButton || !diagnosticsButton || !refreshButton || !statusEl || !contentEl) {
+		reportFatal('Doctor 页面结构不完整。', new Error('REQUIRED_DOM_ELEMENT_MISSING'));
+		return;
+	}
+
+	scanButton.addEventListener('click', () => {
+		renderList().catch(error => reportFatal('扫描扩展失败。', error));
+	});
+	diagnosticsButton.addEventListener('click', () => {
+		diagnostics().catch(error => reportFatal('存储诊断失败。', error));
+	});
+	refreshButton.addEventListener('click', () => {
+		(async () => {
+			await discover();
+			if (active) await renderList();
+		})().catch(error => reportFatal('重新探测上下文失败。', error));
+	});
+
+	async function initialize() {
+		setPhase('initialize', 'doctor.js 已执行，开始首次存储探测……');
 		await discover();
 		if (active) await renderList();
-	})();
+	}
+
+	initialize().catch(error => reportFatal('初始化失败。', error));
 })();
