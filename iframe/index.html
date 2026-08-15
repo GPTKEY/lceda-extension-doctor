@@ -24,12 +24,13 @@
 	</style>
 </head>
 <body>
-	<h1>EDA Extension Doctor <span class="small">v0.2.3</span></h1>
+	<h1>EDA Extension Doctor <span class="small">v0.3.0</span></h1>
 	<p>用于诊断并精确清理嘉立创 EDA / EasyEDA Pro 的单个扩展持久化记录。</p>
 	<p class="small">本工具使用未公开的 IndexedDB 内部结构，因此任何 schema / 身份验证异常都会停止写操作。</p>
 
 	<div class="toolbar">
 		<button id="scan">扫描扩展</button>
+		<button id="orphans">扫描孤儿残留</button>
 		<button id="diagnostics">存储诊断</button>
 		<button id="refresh">重新探测上下文</button>
 	</div>
