@@ -30,7 +30,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          package="build/dist/eda-extension-doctor_v0.2.0.eext"
+          package="build/dist/eda-extension-doctor_v0.2.1.eext"
           test -f "$package"
           unzip -Z1 "$package" | tee /tmp/eext-files.txt
           grep -Fxq 'extension.json' /tmp/eext-files.txt
