@@ -24,9 +24,10 @@
 	</style>
 </head>
 <body>
-	<h1>EDA Extension Doctor <span class="small">v0.3.1</span></h1>
+	<h1>EDA Extension Doctor <span class="small">v0.3.2</span></h1>
 	<p>用于诊断并精确清理嘉立创 EDA / EasyEDA Pro 的单个扩展持久化记录。</p>
 	<p class="small">本工具使用未公开的 IndexedDB 内部结构，因此任何 schema / 身份验证异常都会停止写操作。</p>
+	<p class="small"><b>注意：</b>删除验证通过后，EDA 当前会话仍可能保留扩展列表、菜单或运行实例的内存缓存；完全退出并重新启动后才会从编辑器界面消失。</p>
 
 	<div class="toolbar">
 		<button id="scan">扫描扩展</button>
@@ -53,10 +54,6 @@
 		})();
 	</script>
 
-	<!--
-		EasyEDA/JLCEDA iframe 中原生 prompt 输入框存在兼容性问题。
-		确认兼容层必须先于 doctor.js 加载，接管 Doctor 自己的 DELETE/CLEAN ORPHAN 确认消息。
-	-->
 	<script
 		src="/iframe/confirm-bridge.js"
 		onerror="var s=document.getElementById('status');if(s){s.textContent='确认兼容层加载失败。\n路径：/iframe/confirm-bridge.js\n为防止误删，删除功能不会继续。';s.className='status bad';}"
