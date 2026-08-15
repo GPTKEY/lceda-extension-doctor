@@ -30,14 +30,22 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          package="build/dist/eda-extension-doctor_v0.3.0.eext"
+          package="build/dist/eda-extension-doctor_v0.3.1.eext"
           test -f "$package"
           unzip -Z1 "$package" | tee /tmp/eext-files.txt
           grep -Fxq 'extension.json' /tmp/eext-files.txt
           grep -Fxq 'dist/index.js' /tmp/eext-files.txt
           grep -Fxq 'iframe/index.html' /tmp/eext-files.txt
+          grep -Fxq 'iframe/confirm-bridge.js' /tmp/eext-files.txt
           grep -Fxq 'iframe/doctor.js' /tmp/eext-files.txt
+          unzip -p "$package" iframe/index.html | grep -Fq 'src="/iframe/confirm-bridge.js"'
           unzip -p "$package" iframe/index.html | grep -Fq 'src="/iframe/doctor.js"'
+          bridge_line="$(unzip -p "$package" iframe/index.html | grep -n 'src="/iframe/confirm-bridge.js"' | head -n1 | cut -d: -f1)"
+          doctor_line="$(unzip -p "$package" iframe/index.html | grep -n 'src="/iframe/doctor.js"' | head -n1 | cut -d: -f1)"
+          test "$bridge_line" -lt "$doctor_line"
+          unzip -p "$package" iframe/confirm-bridge.js | grep -Fq "Object.defineProperty(window, 'prompt'"
+          unzip -p "$package" iframe/confirm-bridge.js | grep -Fq 'window.confirm('
+          unzip -p "$package" iframe/confirm-bridge.js | grep -Fq 'return expected'
           unzip -p "$package" iframe/index.html | grep -Fq '扫描孤儿残留'
           unzip -p "$package" iframe/doctor.js | grep -Fq 'seenOrigins.has(origin)'
           unzip -p "$package" iframe/doctor.js | grep -Fq "{ label: 'parent'"
