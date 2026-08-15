@@ -24,7 +24,7 @@
 	</style>
 </head>
 <body>
-	<h1>EDA Extension Doctor <span class="small">v0.2.2</span></h1>
+	<h1>EDA Extension Doctor <span class="small">v0.2.3</span></h1>
 	<p>用于诊断并精确清理嘉立创 EDA / EasyEDA Pro 的单个扩展持久化记录。</p>
 	<p class="small">本工具使用未公开的 IndexedDB 内部结构，因此任何 schema / 身份验证异常都会停止写操作。</p>
 
@@ -37,19 +37,10 @@
 	<div id="status" class="status">HTML 页面已加载，等待启动脚本……</div>
 	<div id="content"></div>
 
-	<!--
-		先运行一个极小的内联 bootstrap，用于区分：
-		1. HTML 能显示但任何 JavaScript 都没有执行；
-		2. 内联 JavaScript 正常，但外部 doctor.js 资源没有被加载；
-		3. doctor.js 已加载但在执行期异常。
-	-->
 	<script>
 		(function () {
 			var status = document.getElementById('status');
-			if (status) {
-				status.textContent = 'HTML 启动脚本已执行。\n正在加载 /iframe/doctor.js ……';
-			}
-
+			if (status) status.textContent = 'HTML 启动脚本已执行。\n正在加载 /iframe/doctor.js ……';
 			window.addEventListener('error', function (event) {
 				var source = String(event && event.filename || '');
 				if (!source.includes('doctor.js')) return;
@@ -60,12 +51,6 @@
 			});
 		})();
 	</script>
-
-	<!--
-		EasyEDA 官方 iframe 示例对 CSS/JS 资源使用从扩展包根目录开始的绝对路径。
-		这里不能使用 ./doctor.js，因为 iframe 实际 URL 可能不是普通目录 URL，
-		相对地址可能无法被扩展安全资源加载器解析到包内文件。
-	-->
 	<script
 		src="/iframe/doctor.js"
 		onerror="var s=document.getElementById('status');if(s){s.textContent='doctor.js 资源加载失败。\n路径：/iframe/doctor.js\n请检查 EDA 扩展资源映射、安装缓存或开发者工具中的 Network/CSP/MIME 错误。';s.className='status bad';}"
