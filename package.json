@@ -1,6 +1,6 @@
 {
 	"name": "lceda-extension-doctor",
-	"version": "0.3.2",
+	"version": "0.3.3",
 	"private": true,
 	"description": "嘉立创 EDA / EasyEDA Pro 扩展诊断与精确卸载维护工具",
 	"author": "GPTKEY",
